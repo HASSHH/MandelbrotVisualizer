@@ -1,0 +1,42 @@
+﻿<Window x:Class="MandelbrotVisualizer.MoveToWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MandelbrotVisualizer"
+        mc:Ignorable="d"
+        Title="Move to" Height="300" Width="300">
+    <Window.DataContext>
+        <local:MoveToViewModel X="-0.5" Y="0" Scale="1.5"/>
+    </Window.DataContext>
+    <Grid Margin="20, 20, 20, 10">
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0">
+            <Label Content="New position:"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <DockPanel Grid.Column="0">
+                    <Label DockPanel.Dock="Left" Content="X:"/>
+                    <TextBox Text="{Binding X, UpdateSourceTrigger=Explicit}" TextChanged="TextBox_TextChanged"/>
+                </DockPanel>
+                <DockPanel Grid.Column="1">
+                    <Label DockPanel.Dock="Left" Content="Y:"/>
+                    <TextBox Text="{Binding Y, UpdateSourceTrigger=Explicit}" TextChanged="TextBox_TextChanged"/>
+                </DockPanel>
+            </Grid>
+            <Label Content="Scale:"/>
+            <DockPanel>
+                <Label DockPanel.Dock="Left" Content="Scale: "/>
+                <TextBox Text="{Binding Scale, UpdateSourceTrigger=Explicit}" TextChanged="TextBox_TextChanged"/>
+            </DockPanel>
+        </StackPanel>
+        <Button Grid.Row="1" Content="OK" Width="100" Margin="0, 10, 0, 0" Click="Button_Click"/>
+    </Grid>
+</Window>

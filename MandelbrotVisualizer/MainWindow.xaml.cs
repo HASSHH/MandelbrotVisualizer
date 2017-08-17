@@ -17,6 +17,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Forms;
+using MandelbrotVisualizer.Transformations;
 
 namespace MandelbrotVisualizer
 {
@@ -33,15 +34,14 @@ namespace MandelbrotVisualizer
         private int indicesCount;
         private Matrix4 viewMatrix;
         private Matrix4 projMatrix;
-        private Vector2d baseCenterPoint = new Vector2d(-0.5, 0);
-        private Vector2d currentCenterPoint = new Vector2d(-0.5, 0);
-        private double baseScale = 1.2;
-        private double currentScale = 1.2;
+        private MandelbrotPosition basePosition;
+        private MandelbrotPosition currentPosition;
         private float renderingResolutionScale = 0.3f;
         private MousePosition oldMousePosition;
         private int fbo;
         private int colorRbo;
         private Timer loopTimer;
+        private readonly TransformationList transformationList = new TransformationList();
 
         public MainWindow()
         {
@@ -52,12 +52,20 @@ namespace MandelbrotVisualizer
             loopTimer.Interval = 1;
             loopTimer.Tick += LoopTimer_Tick;
             loopTimer.Start();
+            basePosition = new MandelbrotPosition();
+            currentPosition = new MandelbrotPosition();
         }
 
         private void LoopTimer_Tick(object sender, EventArgs e)
         {
             //glc?.Invalidate();
-            if (renderingResolutionScale <= 1)
+            MandelbrotPosition transformationResult = transformationList.Tick();
+            if(transformationResult != null)
+            {
+                currentPosition = transformationResult;
+                glc?.Invalidate();
+            }
+            else if (renderingResolutionScale <= 1)
             {
                 glc?.Invalidate();
                 renderingResolutionScale += 0.05f;
@@ -73,6 +81,7 @@ namespace MandelbrotVisualizer
             glc.MouseMove += Glc_MouseMove;
             glc.MouseUp += (s, e) => ClearMousePosition();
             glc.MouseLeave += (s, e) => ClearMousePosition();
+            glc.MouseWheel += Glc_MouseWheel;
             wfHost.Child = glc;
             glc.CreateControl();
         }
@@ -146,8 +155,8 @@ namespace MandelbrotVisualizer
                 CreateRectangle();
             Matrix4 mvpMatrix = viewMatrix * projMatrix;//model matrix is identity
             GL.UniformMatrix4(GL.GetUniformLocation(shaderProgram, "mvpMatrix"), false, ref mvpMatrix);
-            GL.Uniform2(GL.GetUniformLocation(shaderProgram, "centerPoint"), currentCenterPoint.X, currentCenterPoint.Y);
-            GL.Uniform1(GL.GetUniformLocation(shaderProgram, "unitSize"), currentScale);
+            GL.Uniform2(GL.GetUniformLocation(shaderProgram, "centerPoint"), currentPosition.CenterPoint.X, currentPosition.CenterPoint.Y);
+            GL.Uniform1(GL.GetUniformLocation(shaderProgram, "unitSize"), currentPosition.Scale);
             GL.Uniform1(GL.GetUniformLocation(shaderProgram, "aspectRatio"), (double)width / height);
             GL.BindVertexArray(rectangleVao);
             GL.DrawElements(PrimitiveType.Triangles, indicesCount, DrawElementsType.UnsignedInt, IntPtr.Zero);
@@ -193,19 +202,45 @@ namespace MandelbrotVisualizer
 
         private void Glc_MouseMove(object sender, System.Windows.Forms.MouseEventArgs e)
         {
-            if(e.Button == MouseButtons.Left)
+            //dont run when animation/transformation is in progress
+            if(transformationList.TList.Count == 0 && e.Button == MouseButtons.Left)
             {
                 MousePosition newMousePosition = new MousePosition { X = e.X, Y = e.Y };
                 if(oldMousePosition != null)
                 {
                     int xMovement = oldMousePosition.X - newMousePosition.X;
                     int yMovement = newMousePosition.Y - oldMousePosition.Y;
-                    double pixelSize = 2 * currentScale / height;
-                    currentCenterPoint.X += xMovement * pixelSize;
-                    currentCenterPoint.Y += yMovement * pixelSize;
+                    double pixelSize = 2 * currentPosition.Scale / height;
+                    currentPosition.CenterPoint.X += xMovement * pixelSize;
+                    currentPosition.CenterPoint.Y += yMovement * pixelSize;
                     renderingResolutionScale = 0.3f;
                 }
                 oldMousePosition = newMousePosition;
+            }
+        }
+
+        private void Glc_MouseWheel(object sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            if (transformationList.TList.Count == 0)
+            {
+                double zoom = e.Delta < 0 ? ZoomTransformation.ZoomFactor : 1 / ZoomTransformation.ZoomFactor;
+                currentPosition.Scale *= zoom;
+                renderingResolutionScale = 0.5f;
+            }
+        }
+
+        private void MoveToButton_Click(object sender, RoutedEventArgs e)
+        {
+            if(transformationList.TList.Count == 0)
+            {
+                MoveToWindow mtw = new MoveToWindow();
+                if (mtw.ShowDialog().GetValueOrDefault())
+                {
+                    double x, y, scale;
+                    MoveToViewModel vm = mtw.ViewModel;
+                    if (double.TryParse(vm.X, out x) && double.TryParse(vm.Y, out y) && double.TryParse(vm.Scale, out scale))
+                        transformationList.AddTransformations(currentPosition, new MandelbrotPosition { CenterPoint = new Vector2d(x, y), Scale = scale });
+                }
             }
         }
 
@@ -229,6 +264,18 @@ namespace MandelbrotVisualizer
         {
             public int X { get; set; }
             public int Y { get; set; }
+        }
+    }
+
+    public class MandelbrotPosition
+    {
+        public Vector2d CenterPoint;
+        public double Scale;
+
+        public MandelbrotPosition()
+        {
+            CenterPoint = new Vector2d(-0.5, 0);
+            Scale = 1.2;
         }
     }
 }

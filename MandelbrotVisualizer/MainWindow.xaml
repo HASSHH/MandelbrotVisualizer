@@ -13,8 +13,7 @@
         </Grid.RowDefinitions>
         <WindowsFormsHost Grid.Row="0" Name="wfHost"/>
         <StackPanel Grid.Row="1">
-            <Label Name="xPos" Width="100"/>
-            <Label Name="yPos" Width="100"/>
+            <Button Content="Move to position" Click="MoveToButton_Click"/>
         </StackPanel>
     </Grid>
 </Window>
